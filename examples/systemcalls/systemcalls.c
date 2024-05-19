@@ -9,15 +9,16 @@
 */
 bool do_system(const char *cmd)
 {
+	int ret;
+	int status;
 
-/*
- * TODO  add your code here
- *  Call the system() function with the command set in the cmd
- *   and return a boolean true if the system() call completed with success
- *   or false() if it returned a failure
-*/
+	ret = system(cmd);
 
-    return true;
+	if(ret)
+		return false;
+
+	return true;
+
 }
 
 /**
@@ -49,17 +50,22 @@ bool do_exec(int count, ...)
     // and may be removed
     command[count] = command[count];
 
-/*
- * TODO:
- *   Execute a system command by calling fork, execv(),
- *   and wait instead of system (see LSP page 161).
- *   Use the command[0] as the full path to the command to execute
- *   (first argument to execv), and use the remaining arguments
- *   as second argument to the execv() command.
- *
-*/
+	píd_t pid;
+	int status = 0;
+
+	pid = fork();
+
+	// is child proc, should execv
+	if(pid == 0){
+		execv(command[0][0], command[1]);
+	}else{ // is parent proc, should wait
+		wait(&status);
+	}
 
     va_end(args);
+
+	if(status)
+		return false;
 
     return true;
 }
