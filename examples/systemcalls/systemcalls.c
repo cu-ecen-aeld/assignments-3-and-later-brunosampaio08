@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <syslog.h>
+#include <errno.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -48,26 +51,27 @@ bool do_exec(int count, ...)
         command[i] = va_arg(args, char *);
     }
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
 
 	pid_t pid;
-	int status = 0;
+	int status;
 
 	pid = fork();
-
+	
 	// is child proc, should execv
 	if(pid == 0){
-		execv(command[0], &command[1]);
-	}else{ // is parent proc, should wait
+		if(execv(command[0], command) == -1)
+			exit(EXIT_FAILURE);
+	}else if(pid > 0){ // is parent proc, should wait
 		wait(&status);
 	}
 
     va_end(args);
 
-	if(status)
-		return false;
+	if(WIFEXITED(status)){
+		if(WEXITSTATUS(status)){
+			return false;
+		}
+	}
 
     return true;
 }
@@ -88,20 +92,38 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
         command[i] = va_arg(args, char *);
     }
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
 
+	int fd = open(outputfile, O_RDWR|O_CREAT|O_TRUNC);
+	pid_t pid;
+	int status;
 
-/*
- * TODO
- *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
- *   redirect standard out to a file specified by outputfile.
- *   The rest of the behaviour is same as do_exec()
- *
-*/
+	if(fd < 0){
+		return false;
+	}
+
+	pid = fork();
+	
+	// is child proc, should execv
+	if(pid == 0){
+		if(dup2(fd, 1) < 0){
+			return false;
+		}
+		close(fd);
+
+		execv(command[0], command);
+		exit(-1);
+	}else if(pid > 0){ // is parent proc, should wait
+		wait(&status);
+		close(fd);
+	}
 
     va_end(args);
+
+	if(WIFEXITED(status)){
+		if(WEXITSTATUS(status)){
+			return false;
+		}
+	}
 
     return true;
 }
