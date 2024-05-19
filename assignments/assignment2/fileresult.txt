@@ -1,0 +1,5 @@
+~/Documents/CURSOS/COURSERA/linux_system_buildroot/assignments/assignment-2-brunosampaio08/finder-app main $ make CROSS_COMPILE=aarch64-linux-gnu-
+aarch64-linux-gnu-gcc -o writer writer.c
+~/Documents/CURSOS/COURSERA/linux_system_buildroot/assignments/assignment-2-brunosampaio08/finder-app main $ file writer
+writer: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, BuildID[sha1]=e46bd25e61aabce184a05444b591913851c594b2, for GNU/Linux 3.7.0, not stripped
+
