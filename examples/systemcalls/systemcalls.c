@@ -1,4 +1,7 @@
 #include "systemcalls.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -10,7 +13,6 @@
 bool do_system(const char *cmd)
 {
 	int ret;
-	int status;
 
 	ret = system(cmd);
 
@@ -50,14 +52,14 @@ bool do_exec(int count, ...)
     // and may be removed
     command[count] = command[count];
 
-	píd_t pid;
+	pid_t pid;
 	int status = 0;
 
 	pid = fork();
 
 	// is child proc, should execv
 	if(pid == 0){
-		execv(command[0][0], command[1]);
+		execv(command[0], &command[1]);
 	}else{ // is parent proc, should wait
 		wait(&status);
 	}
