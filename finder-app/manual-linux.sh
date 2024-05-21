@@ -106,7 +106,7 @@ cp writer finder-test.sh autorun-qemu.sh ${OUTDIR}/rootfs/home
 cp finder.sh ${OUTDIR}/rootfs/home
 cp conf/username.txt conf/assignment.txt ${OUTDIR}/rootfs/home/conf
 
-# TODO: Chown the root directory
+# Chown the root directory
 sudo chown -R root:root ${OUTDIR}/rootfs
 
 # Create initramfs.cpio.gz
