@@ -81,13 +81,13 @@ ${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "program interpreter
 ${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library"
 
 # Add library dependencies to rootfs
-INTERPRETER=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "program interpreter" | grep -oE "/([a-Z]|/|-|[0-9]|\.)*[0-9]")
+INTERPRETER=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "program interpreter" | grep -oE "/([a-z]|[A-Z]|/|-|[0-9]|\.)*[0-9]")
 echo "Copying Interpreter: "${INTERPRETER#.*/}
 
 #cp -v /usr/aarch64-linux-gnu/lib/${INTERPRETER#/lib/} ${OUTDIR}/rootfs/lib
 find / -name "${INTERPRETER#/lib/}" -exec cp -v {} ${OUTDIR}/rootfs/lib \; -quit 2>/dev/null
 
-SHARED_LIBS=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library" | grep -oE "\[([a-Z]|-|[0-9]|\.)*\]" | sed 's/\[//' | sed 's/\]//')
+SHARED_LIBS=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library" | grep -oE "\[([a-z]|[A-Z]|-|[0-9]|\.)*\]" | sed 's/\[//' | sed 's/\]//')
 echo "Copying Shared libs: "$(echo ${SHARED_LIBS} | tr '\n' ' ')
 #cp -v ${SHARED_LIBS} ${OUTDIR}/rootfs/lib64
 #cp -v ${SHARED_LIBS} ${OUTDIR}/rootfs/lib
