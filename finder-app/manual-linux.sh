@@ -11,7 +11,7 @@ KERNEL_VERSION=v5.10.217
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILE=aarch64-linux-gnu-
+CROSS_COMPILE=aarch64-none-linux-gnu-
 
 if [ $# -lt 1 ]
 then
@@ -82,13 +82,19 @@ ${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library"
 
 # Add library dependencies to rootfs
 INTERPRETER=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "program interpreter" | grep -oE "/([a-Z]|/|-|[0-9]|\.)*[0-9]")
-echo "Copying Interpreter: /usr/aarch64-linux-gnu/lib/"${INTERPRETER#.*/}
-cp -v /usr/aarch64-linux-gnu/lib/${INTERPRETER#/lib/} ${OUTDIR}/rootfs/lib
+echo "Copying Interpreter: "${INTERPRETER#.*/}
 
-SHARED_LIBS=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library" | grep -oE "\[([a-Z]|-|[0-9]|\.)*\]" | sed 's/\[/\/usr\/aarch64-linux-gnu\/lib\//' | sed 's/\]//' | tr '\n' ' ')
-echo "Copying Shared libs: "${SHARED_LIBS}
-cp -v ${SHARED_LIBS} ${OUTDIR}/rootfs/lib64
-cp -v ${SHARED_LIBS} ${OUTDIR}/rootfs/lib
+#cp -v /usr/aarch64-linux-gnu/lib/${INTERPRETER#/lib/} ${OUTDIR}/rootfs/lib
+find / -name "${INTERPRETER#/lib/}" -exec cp -v {} ${OUTDIR}/rootfs/lib \; -quit 2>/dev/null
+
+SHARED_LIBS=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library" | grep -oE "\[([a-Z]|-|[0-9]|\.)*\]" | sed 's/\[//' | sed 's/\]//')
+echo "Copying Shared libs: "$(echo ${SHARED_LIBS} | tr '\n' ' ')
+#cp -v ${SHARED_LIBS} ${OUTDIR}/rootfs/lib64
+#cp -v ${SHARED_LIBS} ${OUTDIR}/rootfs/lib
+for LIB in ${SHARED_LIBS}; do
+	find / -path "*aarch64*${LIB}" -exec cp -v {} ${OUTDIR}/rootfs/lib \; -quit 2>/dev/null
+	find / -path "*aarch64*${LIB}" -exec cp -v {} ${OUTDIR}/rootfs/lib64 \; -quit 2>/dev/null
+done
 
 # Make device nodes
 sudo mknod -m 666 ${OUTDIR}/rootfs/dev/null c 1 3
