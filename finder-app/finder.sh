@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 filesdir=$1
 searchstr=$2
@@ -25,7 +25,7 @@ function search_dir(){
 			search_dir "$file"
 		else
 			file_count=$((file_count+1))
-			word_count=$(($(grep --count "$searchstr" "$file")+word_count))
+			word_count=$(($(grep -c "$searchstr" "$file")+word_count))
 		fi
 	done
 }
