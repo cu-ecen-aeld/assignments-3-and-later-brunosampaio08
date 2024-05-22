@@ -81,6 +81,7 @@ ${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "program interpreter
 ${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "Shared library"
 
 # Add library dependencies to rootfs
+# TODO: use -print-sysroot
 INTERPRETER=$(${CROSS_COMPILE}readelf -a ${OUTDIR}/busybox/busybox | grep "program interpreter" | grep -oE "/([a-z]|[A-Z]|/|-|[0-9]|\.)*[0-9]")
 echo "Copying Interpreter: "${INTERPRETER#.*/}
 
