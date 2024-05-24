@@ -38,6 +38,8 @@ int main(int argc, char** argv){
 
 	openlog(NULL, 0, LOG_USER);
 
+	memset(buffer, 0, sizeof(buffer));
+
 	memset(&signal_action, 0, sizeof(struct sigaction));
 	signal_action.sa_handler = signal_handler;
 
@@ -117,7 +119,8 @@ int main(int argc, char** argv){
 
 				// do a while true because string doesnt end on NULL but
 				// 	on \n
-				while((rc = recv(clientfd, buffer, BUFFER_SIZE, 0)) > 0){
+				while((rc = recv(clientfd, buffer, BUFFER_SIZE-1, 0)) > 0){
+					buffer[rc] = '\0';
 					if(strchr(buffer, '\n') != NULL){
 						write_str = strtok(buffer, "\n");
 						syslog(LOG_ERR, "Recved: %s", write_str);
@@ -133,6 +136,7 @@ int main(int argc, char** argv){
 				// set offset to beginning of file
 				lseek(filefd, 0, SEEK_SET);
 				while((rc = read(filefd, buffer, BUFFER_SIZE-1)) > 0){
+					buffer[rc] = '\0';
 					send(clientfd, buffer, rc, 0);
 				}
 
@@ -168,7 +172,8 @@ int main(int argc, char** argv){
 
 			// do a while true because string doesnt end on NULL but
 			// 	on \n
-			while((rc = recv(clientfd, buffer, BUFFER_SIZE, 0)) > 0){
+			while((rc = recv(clientfd, buffer, BUFFER_SIZE-1, 0)) > 0){
+				buffer[rc] = '\0';
 				syslog(LOG_ERR, "Recved: %s", buffer);
 				if(strchr(buffer, '\n') != NULL){
 					write_str = strtok(buffer, "\n");
@@ -184,6 +189,7 @@ int main(int argc, char** argv){
 			// set offset to beginning of file
 			lseek(filefd, 0, SEEK_SET);
 			while((rc = read(filefd, buffer, BUFFER_SIZE-1)) > 0){
+				buffer[rc] = '\0';
 				send(clientfd, buffer, rc, 0);
 			}
 
