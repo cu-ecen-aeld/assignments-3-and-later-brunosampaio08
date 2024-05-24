@@ -32,7 +32,7 @@ int main(int argc, char** argv){
 
 	struct sigaction signal_action;
 
-	int rc, buffer_size;
+	int rc;
 	int enable = 1;
 	struct addrinfo *aux;
 
@@ -82,7 +82,7 @@ int main(int argc, char** argv){
 	}
 
 	if(aux == NULL){
-		syslog(LOG_ERR, "Failed to bind socket. Leaving.", errno);
+		syslog(LOG_ERR, "Failed to bind socket. Leaving.");
 		remove("/var/tmp/aesdsocketdata");
 		return -1;
 	}

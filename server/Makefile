@@ -1,5 +1,5 @@
 CC ?= $(CROSS_COMPILE)gcc
-CCFLAGS += -g
+CCFLAGS += -g -Wall -Werror
 
 aesdsocket:# | server-dir
 	$(CC) $(CCFLAGS) $(LDFLAGS) -o aesdsocket aesdsocket.c
