@@ -7,7 +7,7 @@ aesdsocket:# | server-dir
 #server-dir:
 #	mkdir -p ../server
 
-all: aesdsocker
+all: aesdsocket
 
 clean:
 	rm -f aesdsocket
