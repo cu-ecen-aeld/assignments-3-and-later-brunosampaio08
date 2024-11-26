@@ -36,6 +36,8 @@ int main(int argc, char** argv){
 	int enable = 1;
 	struct addrinfo *aux;
 
+	int ret;
+
 	openlog(NULL, 0, LOG_USER);
 
 	memset(&signal_action, 0, sizeof(struct sigaction));
@@ -122,12 +124,12 @@ int main(int argc, char** argv){
 					if(strchr(buffer, '\n') != NULL){
 						write_str = strtok(buffer, "\n");
 						syslog(LOG_ERR, "Recved: %s", write_str);
-						write(filefd, write_str, strlen(write_str));
-						write(filefd, "\n", 1);
+						ret = write(filefd, write_str, strlen(write_str));
+						ret = write(filefd, "\n", 1);
 						break;
 					}else{
 						syslog(LOG_ERR, "Recved: %s", buffer);
-						write(filefd, buffer, rc);
+						ret = write(filefd, buffer, rc);
 					}
 				}
 
@@ -175,12 +177,12 @@ int main(int argc, char** argv){
 				syslog(LOG_ERR, "Recved: %s", buffer);
 				if(strchr(buffer, '\n') != NULL){
 					write_str = strtok(buffer, "\n");
-					write(filefd, write_str, strlen(write_str));
-					write(filefd, "\n", 1);
+					ret = write(filefd, write_str, strlen(write_str));
+					ret = write(filefd, "\n", 1);
 					break;
 				}else{
 					syslog(LOG_ERR, "Not newline found!");
-					write(filefd, buffer, rc);
+					ret = write(filefd, buffer, rc);
 				}
 			}
 
