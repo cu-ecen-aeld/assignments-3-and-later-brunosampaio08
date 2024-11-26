@@ -46,7 +46,7 @@ int main(int argc, char** argv){
 		return -1;
 	}
 
-	filefd = open("/var/tmp/aesdsocketdata", O_RDWR|O_CREAT|O_TRUNC|O_SYNC);
+	filefd = open("/var/tmp/aesdsocketdata", O_RDWR|O_CREAT|O_TRUNC|O_SYNC, 0777);
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_INET6;
