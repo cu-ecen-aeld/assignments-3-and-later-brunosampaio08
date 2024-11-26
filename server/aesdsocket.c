@@ -36,7 +36,7 @@ int main(int argc, char** argv){
 	int enable = 1;
 	struct addrinfo *aux;
 
-	int ret;
+	int ret = 0;
 
 	openlog(NULL, 0, LOG_USER);
 
@@ -205,6 +205,9 @@ int main(int argc, char** argv){
 
 	remove("/var/tmp/aesdsocketdata");
 	freeaddrinfo(socket_addrinfo);
+
+	if(ret == -1)
+		return -1;
 	return 0;
 }
 
