@@ -195,7 +195,9 @@ int main(int argc, char** argv){
 
 			}
 
-			struct connection_data_s* np = NULL;
+			struct connection_data_s* np;
+
+			np = malloc(sizeof(struct connection_data_s));
 
 			SLIST_FOREACH(np, &head, entries)
 				pthread_join(np->thread_id, NULL);
