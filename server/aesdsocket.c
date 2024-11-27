@@ -12,11 +12,13 @@
 #include <sys/wait.h>
 #include <pthread.h>
 #include <sys/queue.h>
+#include <time.h>
 
 #define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 2048
 
 int caugth_sig = 0;
+pthread_mutex_t mutex;
 
 struct thread_data_s{
 	int clientfd;
@@ -46,6 +48,7 @@ void* thread_handle_connection(void* thread_arg){
 	struct thread_data_s* t_data;
 	t_data = (struct thread_data_s*)(thread_arg);
 
+	pthread_mutex_lock(&mutex);
 	// do a while true because string doesnt end on NULL but
 	// 	on \n
 	while((rc = recv(t_data->clientfd, buffer, BUFFER_SIZE-2, 0)) > 0){
@@ -68,6 +71,7 @@ void* thread_handle_connection(void* thread_arg){
 		buffer[rc] = '\0';
 		send(t_data->clientfd, buffer, rc, 0);
 	}
+	pthread_mutex_unlock(&mutex);
 
 	close(t_data->clientfd);
 	//syslog(LOG_INFO, "Closed connection from ", client_addr->sin6_addr);
@@ -100,6 +104,7 @@ int main(int argc, char** argv){
 
 	openlog(NULL, 0, LOG_USER);
 
+	pthread_mutex_init(&mutex, NULL);
 
 	memset(&signal_action, 0, sizeof(struct sigaction));
 	signal_action.sa_handler = signal_handler;
@@ -189,11 +194,9 @@ int main(int argc, char** argv){
 				SLIST_INSERT_HEAD(&head, aux_data, entries);
 
 			}
-		}/*else{
-			int status;
+
 			struct connection_data_s* np;
 
-			wait(&status);
 			SLIST_FOREACH(np, &head, entries)
 				pthread_join(np->thread_id, NULL);
 			while(!SLIST_EMPTY(&head)){
@@ -201,7 +204,24 @@ int main(int argc, char** argv){
 				SLIST_REMOVE_HEAD(&head, entries);
 				free(aux_data);
 			}
-		}*/
+		}else{
+			/*int status;
+
+			wait(&status);*/
+
+			time_t prev_time, curr_time;
+			char rfc_2822[BUFFER_SIZE];
+
+			prev_time = time(NULL);
+			while(!caugth_sig){
+				if((curr_time = time(NULL) - prev_time) > 10){
+					pthread_mutex_lock(&mutex);
+					strftime(rfc_2822, sizeof(rfc_2822), "%a, %d %b %Y %T %z", localtime(&curr_time));
+					prev_time = curr_time;
+					pthread_mutex_unlock(&mutex);
+				}
+			}
+		}
 	}else{
 		if(listen(socketfd, MAX_CONNECTIONS) == -1){
 			syslog(LOG_ERR, "Failed to listen for connections. Errno: %d", errno);
@@ -252,6 +272,8 @@ int main(int argc, char** argv){
 			//syslog(LOG_INFO, "Closed connection from ", client_addr->sin6_addr);
 		}
 	}
+
+	pthread_mutex_destroy(&mutex);
 
 	closelog();
 
