@@ -195,10 +195,11 @@ int main(int argc, char** argv){
 
 			}
 
-			struct connection_data_s* np;
+			struct connection_data_s* np = NULL;
 
 			SLIST_FOREACH(np, &head, entries)
 				pthread_join(np->thread_id, NULL);
+
 			while(!SLIST_EMPTY(&head)){
 				aux_data = SLIST_FIRST(&head);
 				SLIST_REMOVE_HEAD(&head, entries);
