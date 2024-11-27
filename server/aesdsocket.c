@@ -200,11 +200,12 @@ int main(int argc, char** argv){
 			SLIST_FOREACH(np, &head, entries)
 				pthread_join(np->thread_id, NULL);
 
-			/*while(!SLIST_EMPTY(&head)){
+			while(!SLIST_EMPTY(&head)){
 				aux_data = SLIST_FIRST(&head);
 				SLIST_REMOVE_HEAD(&head, entries);
-				free(aux_data);
-			}*/
+				if(aux_data != NULL)
+					free(aux_data);
+			}
 		}else{
 			/*int status;
 
@@ -216,9 +217,11 @@ int main(int argc, char** argv){
 			prev_time = time(NULL);
 			while(!caugth_sig){
 				if((curr_time = time(NULL) - prev_time) > 10){
+					prev_time = curr_time;
 					pthread_mutex_lock(&mutex);
 					strftime(rfc_2822, sizeof(rfc_2822), "%a, %d %b %Y %T %z", localtime(&curr_time));
-					prev_time = curr_time;
+					ret = write(filefd, rfc_2822, strlen(rfc_2822));
+					ret = write(filefd, "\n", 1);
 					pthread_mutex_unlock(&mutex);
 				}
 			}
