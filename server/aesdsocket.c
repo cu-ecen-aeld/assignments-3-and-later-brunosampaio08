@@ -200,12 +200,12 @@ int main(int argc, char** argv){
 			SLIST_FOREACH(np, &head, entries)
 				pthread_join(np->thread_id, NULL);
 
-			while(!SLIST_EMPTY(&head)){
+			/*while(!SLIST_EMPTY(&head)){
 				aux_data = SLIST_FIRST(&head);
 				SLIST_REMOVE_HEAD(&head, entries);
 				if(aux_data != NULL)
 					free(aux_data);
-			}
+			}*/
 		}else{
 			/*int status;
 
