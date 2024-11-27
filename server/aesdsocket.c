@@ -10,25 +10,82 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <pthread.h>
+#include <sys/queue.h>
 
 #define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 2048
 
 int caugth_sig = 0;
 
+struct thread_data_s{
+	int clientfd;
+	int filefd;
+};
+
+struct connection_data_s{
+	pthread_t thread_id;
+	struct thread_data_s t_data;
+
+	SLIST_ENTRY(connection_data_s) entries;
+};
+SLIST_HEAD(slisthead, connection_data_s) head;
+
 static void signal_handler(int signal_number){
 	syslog(LOG_INFO, "Caugth signal, exiting");
 	caugth_sig = 1;
 }
 
+void* thread_handle_connection(void* thread_arg){
+	char buffer[BUFFER_SIZE] = "\0";
+	char *write_str;
+
+	int rc = 0;
+	int ret = 0;
+
+	struct thread_data_s* t_data;
+	t_data = (struct thread_data_s*)(thread_arg);
+
+	// do a while true because string doesnt end on NULL but
+	// 	on \n
+	while((rc = recv(t_data->clientfd, buffer, BUFFER_SIZE-2, 0)) > 0){
+		buffer[rc] = '\0';
+		if(strchr(buffer, '\n') != NULL){
+			write_str = strtok(buffer, "\n");
+			syslog(LOG_ERR, "Recved: %s", write_str);
+			ret = write(t_data->filefd, write_str, strlen(write_str));
+			ret = write(t_data->filefd, "\n", 1);
+			break;
+		}else{
+			syslog(LOG_ERR, "Recved: %s", buffer);
+			ret = write(t_data->filefd, buffer, rc);
+		}
+	}
+
+	// set offset to beginning of file
+	lseek(t_data->filefd, 0, SEEK_SET);
+	while((rc = read(t_data->filefd, buffer, BUFFER_SIZE-2)) > 0){
+		buffer[rc] = '\0';
+		send(t_data->clientfd, buffer, rc, 0);
+	}
+
+	close(t_data->clientfd);
+	//syslog(LOG_INFO, "Closed connection from ", client_addr->sin6_addr);
+	
+	if(ret == -1)
+		return NULL;
+	
+	return NULL;
+}
+
 int main(int argc, char** argv){
 	int socketfd, clientfd, filefd;
+	char buffer[BUFFER_SIZE] = "\0";
+	char *write_str;
 	struct sockaddr_storage client_addr;
 	socklen_t client_address_len;
 	struct addrinfo *socket_addrinfo;
 	struct addrinfo hints;
-	char buffer[BUFFER_SIZE] = "\0";
-	char *write_str;
 
 	struct sigaction signal_action;
 
@@ -38,7 +95,11 @@ int main(int argc, char** argv){
 
 	int ret = 0;
 
+	struct slisthead head;
+	struct connection_data_s* aux_data;
+
 	openlog(NULL, 0, LOG_USER);
+
 
 	memset(&signal_action, 0, sizeof(struct sigaction));
 	signal_action.sa_handler = signal_handler;
@@ -117,35 +178,29 @@ int main(int argc, char** argv){
 				}
 				//syslog(LOG_ERR, "Accepted connection from ", client_addr->sin6_addr);
 
-				// do a while true because string doesnt end on NULL but
-				// 	on \n
-				while((rc = recv(clientfd, buffer, BUFFER_SIZE-2, 0)) > 0){
-					buffer[rc] = '\0';
-					if(strchr(buffer, '\n') != NULL){
-						write_str = strtok(buffer, "\n");
-						syslog(LOG_ERR, "Recved: %s", write_str);
-						ret = write(filefd, write_str, strlen(write_str));
-						ret = write(filefd, "\n", 1);
-						break;
-					}else{
-						syslog(LOG_ERR, "Recved: %s", buffer);
-						ret = write(filefd, buffer, rc);
-					}
-				}
+				// recreate the object because we are passing addresses to the thread
+				// there'll be no leak because the list will handle the addresses
+				aux_data = malloc(sizeof(struct connection_data_s));
+				aux_data->t_data.filefd = filefd;
+				aux_data->t_data.clientfd = clientfd;
 
-				// set offset to beginning of file
-				lseek(filefd, 0, SEEK_SET);
-				while((rc = read(filefd, buffer, BUFFER_SIZE-2)) > 0){
-					buffer[rc] = '\0';
-					send(clientfd, buffer, rc, 0);
-				}
+				pthread_create(&aux_data->thread_id, NULL, thread_handle_connection, &aux_data->t_data);
 
-				close(clientfd);
-				//syslog(LOG_INFO, "Closed connection from ", client_addr->sin6_addr);
+				SLIST_INSERT_HEAD(&head, aux_data, entries);
+
 			}
 		}/*else{
 			int status;
+			struct connection_data_s* np;
+
 			wait(&status);
+			SLIST_FOREACH(np, &head, entries)
+				pthread_join(np->thread_id, NULL);
+			while(!SLIST_EMPTY(&head)){
+				aux_data = SLIST_FIRST(&head);
+				SLIST_REMOVE_HEAD(&head, entries);
+				free(aux_data);
+			}
 		}*/
 	}else{
 		if(listen(socketfd, MAX_CONNECTIONS) == -1){
