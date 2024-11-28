@@ -217,7 +217,7 @@ int main(int argc, char** argv){
 
 			prev_time = clock();
 			while(!caugth_sig){
-				curr_time = time(clock);
+				curr_time = clock();
 				if((((int)(curr_time - prev_time))/CLOCKS_PER_SEC) > 10){
 					prev_time = curr_time;
 					pthread_mutex_lock(&mutex);
