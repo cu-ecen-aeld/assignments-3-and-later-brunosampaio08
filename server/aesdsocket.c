@@ -228,7 +228,7 @@ int main(int argc, char** argv){
 					pthread_mutex_lock(&mutex);
 					get_t = time(NULL);
 					strftime(rfc_2822, sizeof(rfc_2822), "%a, %d %b %Y %T %z", localtime(&get_t));
-					ret = write(filefd, "timestamp:", strlen(rfc_2822));
+					ret = write(filefd, "timestamp:", strlen("timestamp"));
 					ret = write(filefd, rfc_2822, strlen(rfc_2822));
 					ret = write(filefd, "\n", 1);
 					pthread_mutex_unlock(&mutex);
