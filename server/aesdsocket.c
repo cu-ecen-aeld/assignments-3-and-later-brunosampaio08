@@ -20,6 +20,8 @@
 int caugth_sig = 0;
 pthread_mutex_t mutex;
 
+clock_t prev_time, curr_time;
+
 struct thread_data_s{
 	int clientfd;
 	int filefd;
@@ -102,6 +104,8 @@ int main(int argc, char** argv){
 	struct slisthead head;
 	struct connection_data_s* aux_data;
 
+	prev_time = curr_time = 0;
+
 	openlog(NULL, 0, LOG_USER);
 
 	pthread_mutex_init(&mutex, NULL);
@@ -183,6 +187,9 @@ int main(int argc, char** argv){
 				}
 				//syslog(LOG_ERR, "Accepted connection from ", client_addr->sin6_addr);
 
+				if(prev_time == 0)
+					prev_time = clock();
+
 				// recreate the object because we are passing addresses to the thread
 				// there'll be no leak because the list will handle the addresses
 				aux_data = malloc(sizeof(struct connection_data_s));
@@ -211,14 +218,13 @@ int main(int argc, char** argv){
 
 			wait(&status);*/
 
-			clock_t prev_time, curr_time;
 			time_t get_t;
 			char rfc_2822[BUFFER_SIZE];
 
 			prev_time = clock();
 			while(!caugth_sig){
 				curr_time = clock();
-				if((((int)(curr_time - prev_time))/CLOCKS_PER_SEC) > 10){
+				if(((((int)(curr_time - prev_time))/CLOCKS_PER_SEC) > 10) && (prev_time != 0)){
 					prev_time = curr_time;
 					pthread_mutex_lock(&mutex);
 					get_t = time(NULL);
