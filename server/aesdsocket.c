@@ -211,15 +211,18 @@ int main(int argc, char** argv){
 
 			wait(&status);*/
 
-			time_t prev_time, curr_time;
+			clock_t prev_time, curr_time;
+			time_t get_t;
 			char rfc_2822[BUFFER_SIZE];
 
-			prev_time = time(NULL);
+			prev_time = clock();
 			while(!caugth_sig){
-				if((curr_time = time(NULL) - prev_time) > 10){
+				curr_time = time(clock);
+				if((((int)(curr_time - prev_time))/CLOCKS_PER_SEC) > 10){
 					prev_time = curr_time;
 					pthread_mutex_lock(&mutex);
-					strftime(rfc_2822, sizeof(rfc_2822), "%a, %d %b %Y %T %z", localtime(&curr_time));
+					get_t = time(NULL);
+					strftime(rfc_2822, sizeof(rfc_2822), "%a, %d %b %Y %T %z", localtime(&get_t));
 					ret = write(filefd, rfc_2822, strlen(rfc_2822));
 					ret = write(filefd, "\n", 1);
 					pthread_mutex_unlock(&mutex);
