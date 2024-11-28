@@ -144,6 +144,11 @@ int main(int argc, char** argv){
 	    perror("setsockopt(SO_REUSEADDR) failed");
 	}
 
+	int opts;
+	opts = fcntl(socketfd, F_GETFL);
+	opts = opts & (~O_NONBLOCK);
+	fnctl(socketfd, F_SETFL, opts);
+
 	for(aux = socket_addrinfo; aux != NULL; aux = aux->ai_next){
 		if(bind(socketfd, socket_addrinfo->ai_addr, socket_addrinfo->ai_addrlen) == -1){
 			syslog(LOG_ERR, "Failed to bind socket. Errno: %d. Retrying.", errno);
