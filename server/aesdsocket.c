@@ -23,6 +23,7 @@ pthread_mutex_t mutex;
 struct thread_data_s{
 	int clientfd;
 	int filefd;
+	int is_finished;
 };
 
 struct connection_data_s{
@@ -71,11 +72,14 @@ void* thread_handle_connection(void* thread_arg){
 		buffer[rc] = '\0';
 		send(t_data->clientfd, buffer, rc, 0);
 	}
+
 	pthread_mutex_unlock(&mutex);
 
 	close(t_data->clientfd);
 	//syslog(LOG_INFO, "Closed connection from ", client_addr->sin6_addr);
 	
+	t_data->is_finished = 1;
+
 	if(ret == -1)
 		return NULL;
 	
@@ -84,8 +88,6 @@ void* thread_handle_connection(void* thread_arg){
 
 int main(int argc, char** argv){
 	int socketfd, clientfd, filefd;
-	char buffer[BUFFER_SIZE] = "\0";
-	char *write_str;
 	struct sockaddr_storage client_addr;
 	socklen_t client_address_len;
 	struct addrinfo *socket_addrinfo;
@@ -105,6 +107,7 @@ int main(int argc, char** argv){
 	openlog(NULL, 0, LOG_USER);
 
 	pthread_mutex_init(&mutex, NULL);
+	SLIST_INIT(&head);
 
 	memset(&signal_action, 0, sizeof(struct sigaction));
 	signal_action.sa_handler = signal_handler;
@@ -205,27 +208,27 @@ int main(int argc, char** argv){
 			SLIST_FOREACH(np, &head, entries)
 				pthread_join(np->thread_id, NULL);
 
-			/*while(!SLIST_EMPTY(&head)){
-				aux_data = SLIST_FIRST(&head);
+			while(!SLIST_EMPTY(&head)){
+				np = SLIST_FIRST(&head);
 				SLIST_REMOVE_HEAD(&head, entries);
-				if(aux_data != NULL)
-					free(aux_data);
-			}*/
+				free(np);
+			}
+
 		}else{
 			/*int status;
 
 			wait(&status);*/
 			int pid = fork();
-			
+
 			if(pid == 0){
-				clock_t prev_time, curr_time;
+				time_t prev_time, curr_time;
 				time_t get_t;
 				char rfc_2822[BUFFER_SIZE];
 
-				prev_time = clock();
+				prev_time = time(NULL);
 				while(!caugth_sig){
-					curr_time = clock();
-					if(((((int)(curr_time - prev_time))/CLOCKS_PER_SEC) > 10)){
+					curr_time = time(NULL);
+					if((((int)(curr_time - prev_time)) > 10)){
 						prev_time = curr_time;
 						pthread_mutex_lock(&mutex);
 						get_t = time(NULL);
@@ -237,56 +240,82 @@ int main(int argc, char** argv){
 					}
 				}
 			}
-			
 		}
 	}else{
-		if(listen(socketfd, MAX_CONNECTIONS) == -1){
-			syslog(LOG_ERR, "Failed to listen for connections. Errno: %d", errno);
-			remove("/var/tmp/aesdsocketdata");
-			return -1;
-		}
 
-		client_address_len = sizeof(client_addr);
-		while(!caugth_sig){
-			syslog(LOG_ERR, "Accepting connection.");
-			clientfd = accept(socketfd, (struct sockaddr*)&client_addr, &client_address_len);
-			if(clientfd == -1){
-				syslog(LOG_ERR, "Failed to create socket fd. Errno: %d", errno);
-				// accept was interrupted by a signal
-				if(errno == EINTR || caugth_sig){
-					break;
+		int pid = fork();
+
+		if(pid == 0){
+			time_t prev_time, curr_time;
+			time_t get_t;
+			char rfc_2822[BUFFER_SIZE];
+
+			prev_time = time(NULL);
+			while(!caugth_sig){
+				curr_time = time(NULL);
+				if((((int)(curr_time - prev_time)) > 10)){
+					prev_time = curr_time;
+					pthread_mutex_lock(&mutex);
+					get_t = time(NULL);
+					strftime(rfc_2822, sizeof(rfc_2822), "%a, %d %b %Y %T %z", localtime(&get_t));
+					ret = write(filefd, "timestamp:", strlen("timestamp:"));
+					ret = write(filefd, rfc_2822, strlen(rfc_2822));
+					ret = write(filefd, "\n", 1);
+					pthread_mutex_unlock(&mutex);
 				}
-				freeaddrinfo(socket_addrinfo);
+			}
+
+		}else{
+			if(listen(socketfd, MAX_CONNECTIONS) == -1){
+				syslog(LOG_ERR, "Failed to listen for connections. Errno: %d", errno);
 				remove("/var/tmp/aesdsocketdata");
 				return -1;
 			}
-			//syslog(LOG_ERR, "Accepted connection from ", client_addr->sin6_addr);
 
-			// do a while true because string doesnt end on NULL but
-			// 	on \n
-			while((rc = recv(clientfd, buffer, BUFFER_SIZE-2, 0)) > 0){
-				buffer[rc] = '\0';
-				syslog(LOG_ERR, "Recved: %s", buffer);
-				if(strchr(buffer, '\n') != NULL){
-					write_str = strtok(buffer, "\n");
-					ret = write(filefd, write_str, strlen(write_str));
-					ret = write(filefd, "\n", 1);
-					break;
-				}else{
-					syslog(LOG_ERR, "Not newline found!");
-					ret = write(filefd, buffer, rc);
+			client_address_len = sizeof(client_addr);
+			while(!caugth_sig){
+				syslog(LOG_ERR, "Accepting connection.");
+				clientfd = accept(socketfd, (struct sockaddr*)&client_addr, &client_address_len);
+				if(clientfd == -1){
+					syslog(LOG_ERR, "Failed to create socket fd. Errno: %d", errno);
+					// accept was interrupted by a signal
+					if(errno == EINTR || caugth_sig){
+						break;
+					}
+					freeaddrinfo(socket_addrinfo);
+					remove("/var/tmp/aesdsocketdata");
+					return -1;
 				}
+				//syslog(LOG_ERR, "Accepted connection from ", client_addr->sin6_addr);
+
+				// recreate the object because we are passing addresses to the thread
+				// there'll be no leak because the list will handle the addresses
+				aux_data = malloc(sizeof(struct connection_data_s));
+				aux_data->t_data.is_finished = 0;
+				aux_data->t_data.filefd = filefd;
+				aux_data->t_data.clientfd = clientfd;
+
+				pthread_create(&(aux_data->thread_id), NULL, thread_handle_connection, &aux_data->t_data);
+
+				SLIST_INSERT_HEAD(&head, aux_data, entries);
+
+				SLIST_FOREACH(aux_data, &head, entries){
+					if(aux_data->t_data.is_finished)
+						pthread_join(aux_data->thread_id, NULL);
+				}
+
 			}
 
-			// set offset to beginning of file
-			lseek(filefd, 0, SEEK_SET);
-			while((rc = read(filefd, buffer, BUFFER_SIZE-2)) > 0){
-				buffer[rc] = '\0';
-				send(clientfd, buffer, rc, 0);
+			while(!SLIST_EMPTY(&head)){
+				aux_data = SLIST_FIRST(&head);
+				SLIST_REMOVE_HEAD(&head, entries);
+				free(aux_data);
 			}
 
-			close(clientfd);
-			//syslog(LOG_INFO, "Closed connection from ", client_addr->sin6_addr);
+			int status;
+
+			wait(&status);
+
 		}
 	}
 
